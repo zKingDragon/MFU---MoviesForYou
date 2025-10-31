@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
 
-const SYSTEM_PROMPT = `Você é um assistente especialista em recomendações de filmes. 
+const SYSTEM_PROMPT = `Você é um assistente especialista em recomendações de filmes chamada MFU AI. 
 Seu objetivo é conversar com o usuário para entender seus gostos cinematográficos e recomendar filmes perfeitos.
 
 Faça perguntas sobre:
@@ -30,11 +30,22 @@ export async function POST(request: NextRequest) {
   try {
     const { messages } = await request.json()
 
+    console.log("🔑 API Key presente:", !!process.env.GEMINI_API_KEY)
+    console.log("📨 Mensagens recebidas:", messages.length)
+
     if (!process.env.GEMINI_API_KEY) {
+      console.error("❌ API key não configurada")
       return NextResponse.json({ error: "API key não configurada" }, { status: 500 })
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" })
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-pro",
+      generationConfig: {
+        temperature: 0.9,
+        topK: 40,
+        topP: 0.95,
+      }
+    })
 
     // Construir o histórico de conversa
     const chatHistory = messages
@@ -59,8 +70,12 @@ export async function POST(request: NextRequest) {
     })
 
     const lastMessage = messages[messages.length - 1].content
+    console.log("💬 Enviando mensagem para Gemini:", lastMessage)
+    
     const result = await chat.sendMessage(lastMessage)
     const response = result.response.text()
+    
+    console.log("✅ Resposta recebida do Gemini")
 
     // Verificar se é uma recomendação (JSON)
     try {
